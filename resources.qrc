@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/Geocoding_NRW" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
