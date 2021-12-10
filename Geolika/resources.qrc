@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/GeoLika" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
