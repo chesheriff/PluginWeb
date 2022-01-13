@@ -21,18 +21,40 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
-from qgis.core import QgsVectorLayer, QgsMapLayer, QgsProject
+from qgis.PyQt.QtWidgets import QAction , QMessageBox#,QApplication, QDialog
+from qgis.core import QgsVectorLayer,  QgsProject, QgsRasterLayer #,QgsGeometry,QgsMapLayer
 import requests
-
+from PyQt5 import uic
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
 from .GeoLika_dialog import GeoLikaDialog
+#from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.uic import loadUi
+#import processing
+#from qgis.gui import *
+
+
+
+
+import sys
+
+
+
 import os.path
 
+#class dialogAdresse(QDialog):
+#    def __init__(self):
+#        super(Dialog,self).__init__()
+#        loadUi("adresse.ui",self)
+#        self.setupUi(self)
+#class dialogFlur(QDialog):
+#    def __init__(self):
+#        super(Dialog,self).__init__()
+#        loadUi("flur.ui",self)
+#        self.setupUi(self)
 
 class GeoLika:
     """QGIS Plugin Implementation."""
@@ -68,6 +90,13 @@ class GeoLika:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
+        self.baseMap=True
+        
+
+
+
+        
+    
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -159,31 +188,161 @@ class GeoLika:
 
         return action
 
-    #def fn():
-     #   filename="https://ogc-api.nrw.de/lika/v1/collections/flurstueck/items/05439400800028______?f=json"
-      #  self.iface.addVectorLayer(requests.get(url).text,"hi","ogr")
 
+    
 
+    
 
-    def layer(self,iface):
-        flur="05"+self.dlg.lineEditFlur.text()
-        #flur="54394008"
-        flurstueck=self.dlg.lineEditFlurstueck.text()
-       # flurstueck="28"
-        kennzeichen=flur+flurstueck.zfill(5)+"______?f=json"
-        url="https://ogc-api.nrw.de/lika/v1/collections/flurstueck/items/"+kennzeichen
-        self.iface.addVectorLayer(requests.get(url).text,"stueck","ogr") #.
-        #zoomToSelected(self.iface.activeLayer)
+    
+    
+ 
+
+    
+
+    def anschrift(self,iface):
+       
+       #self.iface.addRasterLayer("http://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer?f=json&pretty=true","World_raster")
+        wms_url="crs=EPSG:3034&dpiMode=7&format=image/png&layers=nw_dtk_col&styles&url=https://www.wms.nrw.de/geobasis/wms_nw_dtk"
+        #rlayer = QgsRasterLayer(wms_url, 'nrw_dtk_all', 'wms')
+
+        if self.baseMap:
+            self.baseMap = False
+            rlayer = QgsRasterLayer(wms_url, 'nrw_dtk_all', 'wms')
+            QgsProject.instance().addMapLayer(rlayer)
+
+        
+        adr=self.dlg.lineEditAdresse.text()
+        #self.dlg.lineEditAdresse.clear()
+        url="https://nominatim.openstreetmap.org/search?q="+adr+",Nordrhein-Westfalen&format=geojson&countrycodes=DE&polygon_geojson=1&limit=1"
+        
+        #self.dlg.lineEditAdresse.clear()
+
+       
+        # self.iface.messageBar().pushMessage("success","loading...",level=3)
+
+        request=requests.get(url).text
+        vlayer=QgsVectorLayer(request,adr,"ogr")
+        #self.dlg.lineEditAdresse.clear()
+        win=self.iface.mainWindow()
+        #self.iface.addVectorLayer(request,"info","ogr")
+        fea=vlayer.featureCount()
+        if fea==0:
+            QMessageBox.warning(win,"Error","ungültiger Layer \n"+adr+" ist nicht in NRW")
+            self.iface.messageBar().pushMessage("Error","Layer kann nicht geladen werden",level=2)
+            self.dlg.lineEditAdresse.clear()
+            #return
+            
+        else:
+            
+           
+            
+        
+            for feature in vlayer.getFeatures():
+               
+                
+            
+                info=("{display_name}".format(display_name=feature["display_name"]))
+                QMessageBox.about(win,"Informationen",info)
+                #info_2=info+"\nMöchten Sie reinzoomen?"
+                #ret=QMessageBox.information(win,"Informationen",info_2,QMessageBox.No |QMessageBox.Yes, QMessageBox.No)
+                #if ret !=QMessageBox.Yes:return       
+                self.iface.addVectorLayer(request,info,"ogr")
+                #self.iface.setActiveLayer(vlayer)
+                self.iface.zoomToActiveLayer()
+                self.iface.messageBar().pushMessage("Success","loading...",level=3)
+                self.dlg.lineEditAdresse.clear()
+            
         
 
 
-   # def info(self,iface):
-        #win=self.iface.mainWindow()
-        #couche=self.iface.activeLayer()
-        #chps=str(layer.fields().names())
+        
 
-        #features =layer.getFeatures()
-        #selection=layer.selectByExpression("\"flaeche\"='{}'".format(url))
+
+
+        
+
+
+
+
+
+
+
+
+
+    def parzelle(self,iface):
+        wms_url="crs=EPSG:3034&dpiMode=7&format=image/png&layers=nw_dtk_col&styles&url=https://www.wms.nrw.de/geobasis/wms_nw_dtk"
+        #rlayer = QgsRasterLayer(wms_url, 'nrw_dtk_all', 'wms')
+       
+       
+        #QgsProject.instance().addMapLayer(QgsRasterLayer("crs=EPSG:3034&dpiMode=7&format=image/png&layers=nw_dtk_col&styles&url=https://www.wms.nrw.de/geobasis/wms_nw_dtk", 'some layer name', 'wms'))
+        
+        
+        if self.baseMap:
+            self.baseMap = False
+            rlayer = QgsRasterLayer(wms_url, 'nrw_dtk_all', 'wms')
+            QgsProject.instance().addMapLayer(rlayer)
+            
+            
+
+        
+           
+       
+        gemarkung="05"+self.dlg.lineEditGemarkung.text()
+      
+        flur=self.dlg.lineEditFlur.text()
+        flurstueck=self.dlg.lineEditFlurstueck.text()
+        kennzeichen=gemarkung+flur.zfill(3)+flurstueck.zfill(5)+"______?f=json"
+        url="https://ogc-api.nrw.de/lika/v1/collections/flurstueck/items/"+kennzeichen
+        vlayer=QgsVectorLayer(requests.get(url).text,gemarkung+flur.zfill(3)+flurstueck.zfill(5),"ogr")
+        self.dlg.lineEditFlurstueck.clear()
+        
+        win=self.iface.mainWindow()
+        #self.iface.addVectorLayer(requests.get(url).text,"info_2","ogr")
+        #fea=vlayer.featureCount()
+        #if fea==0:
+            #QMessageBox.warning(win,"Error","ungültiger Layer \n"+kennzeichen+" ist nicht in NRW")
+        #else:
+        #self.iface.addVectorLayer(requests.get(url).text,"info_2","ogr")
+        request=requests.get(url)
+        if request.status_code!=200:
+            QMessageBox.warning(win,"Error","ungültiger Layer \n"+kennzeichen+" ist nicht in korrekt")
+            self.iface.messageBar().pushMessage("Error","Layer ist nicht ungültig:\n Der Layer ist kein gültiger Layer und kann nicht zur Karte hinzugefügt",level=2)
+        else:
+            
+
+            for feature in vlayer.getFeatures():
+           
+            
+            
+                info=("Flurstückskennzeichen {id} \nFläche=  {flaeche} m² in Flur {flur}, Gemarkung {gemarkung} \nGemeinde= {gemeinde} \nKreis= {kreis} \nBezirkregierung= {regbezirk} \nLand= {land} \n{tntxt}".format(regbezirk=feature['regbezirk'],tntxt=feature['tntxt'],id=feature['id'],land=feature['land'],flaeche=feature['flaeche'],flur=feature['flur'],gemarkung=feature['gemarkung'],gemeinde=feature['gemeinde'],kreis=feature['kreis']))
+                info_2=("Flurstückskennzeichen {id} \nin Flur {flur}\nGemarkung {gemarkung}".format(id=feature['id'],flur=feature['flur'],gemarkung=feature['gemarkung']))
+                QMessageBox.about(win,"Informationen",info)
+                #ret=QMessageBox.information(win,"Frage","Möchten Sie reinzoomen",QMessageBox.No |QMessageBox.Yes, QMessageBox.No)
+                #if ret !=QMessageBox.Yes:return
+                self.iface.addVectorLayer(requests.get(url).text,info_2,"ogr")
+                self.iface.zoomToActiveLayer()
+                self.iface.messageBar().pushMessage("Success","loading...",level=3)  
+                #self.dlg.lineEditFlurstueck.clear()
+            
+       
+
+        
+     
+        
+
+        
+
+    
+
+       
+        
+
+
+  
+
+
+
+   
         
 
 
@@ -221,9 +380,17 @@ class GeoLika:
         if self.first_start == True:
             self.first_start = False
             self.dlg = GeoLikaDialog()
+     
+#
+       
 
-            self.dlg.locate.clicked.connect(self.layer)
-           # self.dlg.locate.clicked.connect(self.info)
+        self.dlg.pushButtonSuche.clicked.connect(self.parzelle)
+        
+        self.dlg.pushButtonSucheAdresse.clicked.connect(self.anschrift)
+        #self.dlg.setWindowFlags(Qt.WindowStaysOnTopHint)
+       
+       
+         
 
             
 
